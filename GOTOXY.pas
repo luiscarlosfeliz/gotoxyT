@@ -90,10 +90,6 @@ begin
     encoder2 := 0;
     ki:= 0.0005;
     b:=0.1;
-   // theta:= -pi/2 ;
-
-//  Xrob :=  0;
-  //Yrob  := 0.4;
 
   end;
 
@@ -152,17 +148,33 @@ begin
 
 
   theta:= NORMALIZEANGLE (theta+dteta) ;
-  
-  //if (theta>3.14) then begin
-  //theta:=-3.14;
 
-  //end;
 
   SetRCValue(1,7,format('%f',[Xrob]));
   SetRCValue(2,7,format('%f',[Yrob]));
   SetRCValue(3,7,format('%f',[theta*180/pi]));
 
 
+end;
+
+ Procedure  goTOxyg;
+ 
+var v1,v2,sens1,sens2:double;
+    dteta,d:double;
+    
+ begin
+ 
+    if keyPressed(ord('G')) then begin
+    SetRobotPos(irobot, 0, 0.4, 0, 0);
+
+    encoder1 := 0;
+    encoder2 := 0;
+    ki:= 0.0005;
+    b:=0.1;
+
+  end;
+  
+  
     target_x:= GetRCValue(6, 8);
     target_y:= GetRCValue(7, 8);
     target_t:= atan2(target_y,target_x);
@@ -281,7 +293,6 @@ SetRCValue(7,2,format('%d',[stat]));
 SetRCValue(8,2,format('%g',[abs(erro_theta)*180/pi]));
 SetRCValue(11,2,format('%g',[w]));
 SetRCValue(12,2,format('%g',[ANG2F*180/pi]));
-SetRCValue(13,2,format('%g',[theta*180/pi]));
 SetRCValue(14,2,format('%g',[dteta*180/pi]));
 SetRCValue(15,2,format('%g',[erro_dist]));
 
@@ -301,7 +312,7 @@ begin
 
   Xrob :=  0;
   Yrob  := 0.4;
-     
+
 
   ControlMode := 'keys';
 end;
