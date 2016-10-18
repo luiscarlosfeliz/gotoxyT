@@ -1,3 +1,4 @@
+
 const
 NumWheels = 4;
 //ROTATE = 1;
@@ -77,7 +78,7 @@ var ref: double;
     s: string;
     odo1,odo2: integer;
     v1,v2,sens1,sens2:double;
-    dteta,d:double;
+    dteta,d, erro_thetaF, thetaF:double;
 
 
 
@@ -90,9 +91,15 @@ begin
     encoder2 := 0;
     ki:= 0.0005;
     b:=0.1;
+   // theta:= -pi/2 ;
+
+//  Xrob :=  0;
+  //Yrob  := 0.4;
 
   end;
 
+
+  
   if keyPressed(ord('S')) then begin
     ControlMode := 'keys';
   end else if keyPressed(ord('T')) then begin
@@ -149,38 +156,23 @@ begin
 
   theta:= NORMALIZEANGLE (theta+dteta) ;
 
+  //if (theta>3.14) then begin
+  //theta:=-3.14;
+
+  //end;
 
   SetRCValue(1,7,format('%f',[Xrob]));
   SetRCValue(2,7,format('%f',[Yrob]));
   SetRCValue(3,7,format('%f',[theta*180/pi]));
 
 
-end;
-
- Procedure  goTOxyg;
- 
-var v1,v2,sens1,sens2:double;
-    dteta,d:double;
-    
- begin
- 
-    if keyPressed(ord('G')) then begin
-    SetRobotPos(irobot, 0, 0.4, 0, 0);
-
-    encoder1 := 0;
-    encoder2 := 0;
-    ki:= 0.0005;
-    b:=0.1;
-
-  end;
-  
-  
     target_x:= GetRCValue(6, 8);
     target_y:= GetRCValue(7, 8);
     target_t:= atan2(target_y,target_x);
+    thetaF:= GetRCValue(8,8);
    // target_t:=(target_t*pi )/ 180;
 
-    SetRCValue(8,8,format('%f',[target_t]));
+    //SetRCValue(8,8,format('%g',[target_t]));
 
   //  v:=  GetRCValue(10, 8);
   // w1:=  GetRCValue(11,8);
@@ -189,7 +181,7 @@ var v1,v2,sens1,sens2:double;
     //ANG2F:= atan2(target_y-0.4,target_x-0);
     Erro_theta := -normalizeangle (ang2f - theta);
     Erro_dist:= SQRT( (target_x-xrob)*(target_x-xrob) + (target_y-yrob)*(target_y-yrob));
-
+    Erro_thetaF:=-normalizeangle(thetaF-theta);
 
 
 
@@ -208,14 +200,14 @@ var v1,v2,sens1,sens2:double;
       stat:=3;
       end;
 
-  if (abs(erro_theta) >0.5) then begin
+  if (abs(erro_theta) >0.2) then begin
       stat:=1;
       end;
   end;
 
   3: begin      //de_accel
 
-  if (erro_dist < 0.02) then begin
+  if (erro_dist < 0.005) then begin
       stat:=4;
       end;
 
@@ -223,17 +215,17 @@ var v1,v2,sens1,sens2:double;
 
   4: begin      //Final_ROT
 
-  //if (abs(erro_theta) < 0.5) then begin
+  if (abs(erro_thetaF) < 0.3) then begin
       stat:=5;
-    //  end;
+     end;
 
   end;
 
   5: begin  //de_acc_final_rot
 
- //if (abs(erro_theta) < 0.2) then begin
+ if (abs(erro_thetaF) < 0.1) then begin
       stat:=6;
-   //   end;
+      end;
 
 
   end;
@@ -251,11 +243,11 @@ case stat of
 
 1:  begin
       v:=0;
-      w:= 25;
+      w:= 20;
     end;
 2: begin
       v:=5;
-      w:= 5*erro_theta;
+      w:= 8*erro_theta;
   end;
 3: begin
       v:=0.5;
@@ -263,17 +255,17 @@ case stat of
     end;
 4: begin
       v:=0;
-      w:=2;
+      w:=8 * erro_thetaF ;
     end;
 
 5: begin
       v:=0;
-      w:= 0.5;
+      w:=4*erro_thetaF ;
     end;
 
 6:begin
       v:=0;
-      w:=0;
+      w:= 0;
   end;
 
 end;
@@ -285,7 +277,6 @@ end;
  v1 := v-w*b/2;
  v2 := v+w*b/2;
 
-
 SetAxisSpeedRef(irobot, 0, v1);
 SetAxisSpeedRef(irobot, 1, v2);
 
@@ -293,6 +284,7 @@ SetRCValue(7,2,format('%d',[stat]));
 SetRCValue(8,2,format('%g',[abs(erro_theta)*180/pi]));
 SetRCValue(11,2,format('%g',[w]));
 SetRCValue(12,2,format('%g',[ANG2F*180/pi]));
+SetRCValue(13,2,format('%g',[theta*180/pi]));
 SetRCValue(14,2,format('%g',[dteta*180/pi]));
 SetRCValue(15,2,format('%g',[erro_dist]));
 
