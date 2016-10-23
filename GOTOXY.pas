@@ -1,28 +1,22 @@
-const
-NumWheels = 4;
-//ROTATE = 1;
+const NumWheels = 4;
 
 // Global Variables
 var irobot, isensor: integer;
-    t, w, ki,b, Xrob, Yrob,theta: double;
+    t, w: double;
     lines: TStrings;
     UDP: TStream;
     ControlMode: string;
-    encoder1,encoder2,stat: integer;
-    target_x, target_y, target_t, v , w1, YS, ANG2F, ERRO_theta, erro_dist:double;
-
-
-
-
-
+    encoder1, encoder2, xyz, kimp, dteta, tetaAnt, delta_d, delta_t, b, x_act, y_act, t_act, xf, yf, tf: double;
+    estadoGT, flag:integer;
+    ang_ida, erro_ang_gt, erro_angf: double;
 procedure KeyControl(v: double);
 var v1, v2: double;
 begin
 
-  //v := 10;
+  v := 10;
 
-  //v1 := 0;
-  //v2 := 0;
+  v1 := 0;
+  v2 := 0;
   if keyPressed(VK_RIGHT) then begin
     v1 := +1;
     v2 := -1;
@@ -50,7 +44,7 @@ begin
 end;
 
 procedure TrackControl(v, k: double);
-var  err, ys: double;
+var v1, v2, err, ys: double;
     P: TPoint3D;
 begin
   P := GetSolidPos(irobot, isensor);
@@ -61,40 +55,95 @@ begin
   end else begin
     err := -P.x;
   end;
+  
+  v1 := v - k * err;
+  v2 := v + k * err;
 
-  //v1 := v - k * err;
-  //v2 := v + k * err;
+  SetAxisSpeedRef(irobot, 0, v1);
+  SetAxisSpeedRef(irobot, 1, v2);
+end;
 
-  //v1 :=  2*v - (0.1*w+2*v)/2;
-  //v2 := (0.1*w+2*v)/2;
+
+procedure VelocidadeManual;
+var  v1,v2,vl,vw: double;
+ begin
+  SetRCValue(4, 1 ,format('%s',['v=']));
+  vl:=GetRCValue(4,2);
+  SetRCValue(5, 1 ,format('%s',['w(graus/s)=']));
+  vw:=GetRCValue(5,2)*pi/180;
+
+  v1 := vl+vw*b/2;
+  v2 := vl-vw*b/2;
+
+  SetAxisSpeedRef(irobot, 0, v1);
+  SetAxisSpeedRef(irobot, 1, v2);
+
+end;
+
+procedure VelocidadeGoTo(vgt,wgt:double);
+var  v1,v2: double;
+ begin
+
+  v1 := vgt+wgt*b/2;
+  v2 := vgt-wgt*b/2;
+
+  SetAxisSpeedRef(irobot, 0, v1);
+  SetAxisSpeedRef(irobot, 1, v2);
 
 
 end;
 
+procedure GoTo_xyt(xff,yff,tff:double);
+(*funcao que vai para xff yff e teta_ff*)
+var
+     k1,k2,k3:double;
+begin
+  k1:=40; k2:=40;k3:=50;
+  ang_ida:= atan2(yff-y_act,xff-x_act);
+  erro_ang_gt:=-normalizeangle(ang_ida-t_act);
+  erro_angf:=-normalizeangle(tff-t_act);
+
+  case estadoGT Of
+    0:begin
+    (*RODA PARA IR*)
+      //if(abs(erro_ang_gt)>0.05)then begin k1:=50;end;
+      VelocidadeGoTo(0,k1*erro_ang_gt);
+      if(abs(erro_ang_gt)<0.03)then begin estadoGT:=1;end;
+    end;
+     1:begin
+     (*VAI PARA o PONTO*)
+      if(abs(erro_ang_gt)>0.05)then begin estadoGT:=0;end;
+      VelocidadeGoTo(10,k2*erro_ang_gt);
+      if((abs(xff-x_act)<0.02) and (abs(yff-y_act)<0.02))then begin estadoGT:=2;end;
+    end;
+    2:begin
+    (*RODA PARA O ANG FINAL*)
+        VelocidadeGoTo(0,k3*erro_angf);
+        if( abs(erro_angf)<0.05 )then
+        begin estadoGT:=3; flag:=0; end;
+    end;
+    3:begin
+    (*PARADO*)
+    end;
+  end;
+
+  SetRCValue(18, 1 ,format('%s',['estadoGT=']));  SetRCValue(18, 2 ,format('%d',[estadoGT]));
+  SetRCValue(15, 3 ,format('%s',['ang_ida=']));  SetRCValue(15, 4 ,format('%f',[ang_ida*180/pi]));
+  SetRCValue(16, 3 ,format('%s',['t_Act=']));  SetRCValue(16, 4 ,format('%f',[t_act*180/pi]));
+  SetRCValue(17, 3 ,format('%s',['erro_ang=']));  SetRCValue(17, 4 ,format('%f',[erro_ang_gt*180/pi]));
+  SetRCValue(18, 3 ,format('%s',['erro_angf=']));  SetRCValue(18, 4 ,format('%f',[erro_angf]));
+end;
 
 procedure Control;
+
 var ref: double;
     s: string;
     odo1,odo2: integer;
-    v1,v2,sens1,sens2:double;
-    dteta,d:double;
-
-
-
+    sens1,sens2:double;
 begin
 
   if keyPressed(ord('R')) then begin
     SetRobotPos(irobot, 0, 0.4, 0, 0);
-
-    encoder1 := 0;
-    encoder2 := 0;
-    ki:= 0.0005;
-    b:=0.1;
-   // theta:= -pi/2 ;
-
-//  Xrob :=  0;
-  //Yrob  := 0.4;
-
   end;
 
   if keyPressed(ord('S')) then begin
@@ -108,200 +157,136 @@ begin
   if ControlMode = 'keys' then begin
     KeyControl(10);
   end;
-
+  
   t := t + 0.04;
   if w*t >= 2*pi then begin
     t := t - 2*pi/w;
   end;
-
+  
   if controlMode = 'track' then begin
     TrackControl(10, 150);
   end;
-
+  
   sens1:=GetSensorVal(0,0);
   sens2:=GetSensorVal(0,1);
 
-
+  
   //GetAxisOdo(RobotIndex, AxisIndex);
   odo1:=GetAxisOdo(0,0);
   odo2:=GetAxisOdo(0,1);
-
+  
   SetRCValue(1, 1 ,format('%.3g',[sens1]));
   SetRCValue(2, 1 ,format('%.3g',[sens2]));
 
-  SetRCValue(1,3,format('%d',[Odo1]));
-  SetRCValue(2,3,format('%d',[Odo2]));
+  //Fazemos o robo andar sempre em frente: v=20 e w=0 e chegamos ao valor de kimp_est~=0.0005
+  odo1:=GetAxisOdo(0,0);
+  odo2:=GetAxisOdo(0,1);
 
+  //SetRCValue(4, 1 ,format('%s',['odo1=']));
+  //SetRCValue(4, 2 ,format('%d',[odo1]));
+  //SetRCValue(5, 1 ,format('%s',['odo2=']));
+  //SetRCValue(5, 2 ,format('%d',[odo2]));
 
   encoder1 := encoder1+Odo1;
   encoder2 := encoder2+Odo2;
 
-  SetRCValue(1,4,format('%d',[encoder1]));
-  SetRCValue(2,4,format('%d',[encoder2]));
+  //SetRCValue(7, 1 ,format('%s',['encoder1=']));
+  //SetRCValue(7, 2 ,format('%.3g',[encoder1]));
+  //SetRCValue(8, 1 ,format('%s',['encoder2=']));
+  //SetRCValue(8, 2 ,format('%.3g',[encoder2]));
+
+  //Estimar kimp indo sempre em frente
+  xyz:=encoder1+encoder2;
+  if ( xyz=0) then begin xyz:=0.000001  end;
+  //SetRCValue(7, 3 ,format('%s',['kimp_est=']));
+  //SetRCValue(7, 4 ,format('%.3g',[2* GetRobotY(irobot)/(xyz)]));
 
 
-  dteta := (odo2*ki - odo1*ki) / b  ;
+//bbbbbbbbbbbbbbbbbbbb)
+  //Basta no sitio em que estamos rodar um pouco e chegamos ao valor de b_est~=0.1
+  //Estimar b rodando
+  xyz:= kimp*(encoder2-encoder1);
+  dteta:=GetRobotTheta(irobot)-tetaant;
+  if ( xyz=0) then begin xyz:=0.000001  end;
+  //SetRCValue(8, 3 ,format('%s',['b_est=']));
+  //SetRCValue(8, 4 ,format('%.3g',[xyz/(dteta)]));
 
-  d := (odo1*ki + odo2*ki)/2 ;
+//ccccccccccccccccccccccc
+//usar o kimp dado e b dado podemos agora axar o delta_d e o delta_t
+  delta_d:=( kimp*odo1+ kimp*odo2)/2;
+  delta_t:=(kimp*odo2-kimp*odo1)/b;
+
+  //Calculo proximo
+   x_act:=x_act+(delta_d)*cos(t_act+(delta_t)/2);
+   y_act:=y_act+(delta_d)*sin(t_act+(delta_t)/2);
+   t_act:=NORMALIZEANGLE(t_act+(delta_t));
+
+  SetRCValue(10, 1 ,format('%s',['x_act=']));
+  SetRCValue(10, 2 ,format('%.3g',[x_act]));
+  SetRCValue(10, 3 ,format('%s',['irobot_x']));
+  SetRCValue(10, 4 ,format('%.3g',[ GetRobotX(irobot)]));
+
+  SetRCValue(11, 1 ,format('%s',['y_act=']));
+  SetRCValue(11, 2 ,format('%.3g',[y_act]));
+  SetRCValue(11, 3 ,format('%s',['irobot_y']));
+  SetRCValue(11, 4 ,format('%.3g',[  GetRobotY(irobot)]));
+
+  SetRCValue(12, 1 ,format('%s',['theta_act=']));
+  SetRCValue(12, 2 ,format('%.3g',[t_act*180/pi]));
+  SetRCValue(12, 3 ,format('%s',['irobot_theta']));
+  SetRCValue(12, 4 ,format('%.3g',[ GetRobotTheta(irobot)*180/pi]));
+
+  //VelocidadeManual();
+    SetRCValue(4,4 ,format('%s',['xF']));
+    SetRCValue(5, 4 ,format('%s',['yF']));
+    SetRCValue(6, 4 ,format('%s',['ThetaF']));
+  //Verificar se Botao foi precionado
+
+  if( keyPressed(ord('G')) =true)then begin
+
+   flag:=1;
+   estadoGT:=0;
+    //OBTER xf e yf e tf
+    
 
 
-
-
-  Xrob :=  Xrob + d* cos(theta+dteta/2);
-  Yrob:=  Yrob + d* sin(theta+dteta/2);
-
-
-  theta:= NORMALIZEANGLE (theta+dteta) ;
-  
-  //if (theta>3.14) then begin
-  //theta:=-3.14;
-
-  //end;
-
-  SetRCValue(1,7,format('%f',[Xrob]));
-  SetRCValue(2,7,format('%f',[Yrob]));
-  SetRCValue(3,7,format('%f',[theta*180/pi]));
-
-
-    target_x:= GetRCValue(6, 8);
-    target_y:= GetRCValue(7, 8);
-    target_t:= atan2(target_y,target_x);
-   // target_t:=(target_t*pi )/ 180;
-
-    SetRCValue(8,8,format('%f',[target_t]));
-
-  //  v:=  GetRCValue(10, 8);
-  // w1:=  GetRCValue(11,8);
-
-    ANG2F:= atan2(target_y-yrob,target_x-xrob);
-    //ANG2F:= atan2(target_y-0.4,target_x-0);
-    Erro_theta := -normalizeangle (ang2f - theta);
-    Erro_dist:= SQRT( (target_x-xrob)*(target_x-xrob) + (target_y-yrob)*(target_y-yrob));
-
-
-
-
-
-     case stat of
-
-  1: begin   //rotate
-      if (abs(erro_theta) < 0.03) then begin
-      stat:=2;
-      end;
-
-  end;
-
-  2: begin        //go forward
-  if (abs(erro_dist) < 0.05) then begin
-      stat:=3;
-      end;
-
-  if (abs(erro_theta) >0.5) then begin
-      stat:=1;
-      end;
-  end;
-
-  3: begin      //de_accel
-
-  if (erro_dist < 0.02) then begin
-      stat:=4;
-      end;
+    xf:=GetRCValue(4,5);
+    yf:=GetRCValue(5,5);
+    tf:=GetRCValue(6,5)*pi/180;
+    
 
   end;
 
-  4: begin      //Final_ROT
-
-  //if (abs(erro_theta) < 0.5) then begin
-      stat:=5;
-    //  end;
-
-  end;
-
-  5: begin  //de_acc_final_rot
-
- //if (abs(erro_theta) < 0.2) then begin
-      stat:=6;
-   //   end;
+    SetRCValue(4,6 ,format('%g',[xF]));
+    SetRCValue(5, 6 ,format('%g',[yF]));
+    SetRCValue(6, 6 ,format('%g',[tf*180/pi]));
+    SetRCValue(7, 4 ,format('%s',['flag']));
+    SetRCValue(7, 5 ,format('%d',[flag]));
 
 
-  end;
-
-  6: begin     //stop
-   //   stat:=1;
-  end;
-
-end;  //end case
-
-////////////////////////////////////////////////////////////////
-
-
-case stat of
-
-1:  begin
-      v:=0;
-      w:= 25;
-    end;
-2: begin
-      v:=5;
-      w:= 5*erro_theta;
-  end;
-3: begin
-      v:=0.5;
-      w:=5*erro_theta;
-    end;
-4: begin
-      v:=0;
-      w:=2;
-    end;
-
-5: begin
-      v:=0;
-      w:= 0.5;
-    end;
-
-6:begin
-      v:=0;
-      w:=0;
-  end;
+   if(flag=1) then begin
+   GoTo_xyt(xf,yf,tf);
+   end;
 
 end;
 
 
-//v1 :=  2*v - (0.1*w+2*v)/2;
-//v2 := (0.1*w+2*v)/2;
-
- v1 := v-w*b/2;
- v2 := v+w*b/2;
-
-
-SetAxisSpeedRef(irobot, 0, v1);
-SetAxisSpeedRef(irobot, 1, v2);
-
-SetRCValue(7,2,format('%d',[stat]));
-SetRCValue(8,2,format('%g',[abs(erro_theta)*180/pi]));
-SetRCValue(11,2,format('%g',[w]));
-SetRCValue(12,2,format('%g',[ANG2F*180/pi]));
-SetRCValue(13,2,format('%g',[theta*180/pi]));
-SetRCValue(14,2,format('%g',[dteta*180/pi]));
-SetRCValue(15,2,format('%g',[erro_dist]));
-
-end;
 
 procedure Initialize;
 begin
   irobot := 0;
   isensor := GetSolidIndex(irobot, 'NXTLightSensor');
-
+  
   t := 0;
   w := 1;
-    ki:= 0.0005;
-    b:=0.1;
-    theta:=-pi/2 ;
-    stat:=1;
+  
+  kimp:= 0.0005;
+  b:=0.1;
+  t_act:=-pi/2 ;
 
-  Xrob :=  0;
-  Yrob  := 0.4;
-     
-
+  estadoGT :=0;
+  X_act :=  0;
+  Y_act  := 0.4;
+  
   ControlMode := 'keys';
 end;
