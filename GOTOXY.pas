@@ -134,6 +134,43 @@ begin
   SetRCValue(18, 3 ,format('%s',['erro_angf=']));  SetRCValue(18, 4 ,format('%f',[erro_angf]));
 end;
 
+Procedure Fline;
+
+Var
+
+
+
+begin
+ SetRCValue(4, 7 ,format('%s',['x1F=']));  SetRCValue(4, 8 ,format('%d',[x1f]));
+ SetRCValue(5, 7 ,format('%s',['y1F=']));  SetRCValue(5, 8 ,format('%d',[y1f]));
+ SetRCValue(6, 7 ,format('%s',['x2F=']));  SetRCValue(6, 8 ,format('%d',[x2f]));
+ SetRCValue(7, 7 ,format('%s',['y2F=']));  SetRCValue(8, 8 ,format('%d',[y2f]));
+
+
+ n1 := (x2f-x1f)/(sqrt(((x2f-x1f)*(x2f-x1f))+((y2f-y1f)*(y2f-y1f))));
+ n2 := (y2f-y1f)/(sqrt(((x2f-x1f)*(x2f-x1f))+((y2f-y1f)*(y2f-y1f))));
+
+ A:= (x1f-x_act)*n1 + (y1f-y_act)*n2;
+
+ xp := x_act + (x1f-x_act) - (A*n1);
+ yp := y_act + (y1f-y_act) - (A*n2);
+
+ edlinha := sqrt(Norm2(xp-x_act,yp-y_Act));
+ edpfinal := sqrt(Norm2(x2-x_act,y2-y_act));
+
+ alinha1 := atan2(yp-y_act, xp-x_act);
+ ealinha1 := normalizeangle(t_act-alinha1);
+
+ alinha2 := atan2(y2f-y_act, x2f-x_Act);
+ ealinha2 := normalizeangle(t_Act-alinha2);
+ 
+
+
+
+end;
+
+
+
 procedure Control;
 
 var ref: double;
