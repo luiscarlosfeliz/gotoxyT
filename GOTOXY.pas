@@ -6,9 +6,10 @@ var irobot, isensor: integer;
     lines: TStrings;
     UDP: TStream;
     ControlMode: string;
-    encoder1, encoder2, xyz, kimp, dteta, tetaAnt, delta_d, delta_t, b, x_act, y_act, t_act, xf, yf, tf: double;
-    estadoGT, flag:integer;
-    ang_ida, erro_ang_gt, erro_angf: double;
+    encoder1, encoder2, xyz, kimp, dteta, tetaAnt, delta_d, delta_t, b, x_act, y_act, t_act, tfGT,xfGT,yfGT: double;
+    estadoGT, flag, estadoFL:integer;
+    ang_ida, erro_ang_gt, erro_angf, x_fl_ir, y_fl_ir,distx, disty,x2fl,y2fl,x1fl,y1fl,tfl, xi, xf, yi, yf : double;
+    
 procedure KeyControl(v: double);
 var v1, v2: double;
 begin
@@ -134,41 +135,149 @@ begin
   SetRCValue(18, 3 ,format('%s',['erro_angf=']));  SetRCValue(18, 4 ,format('%f',[erro_angf]));
 end;
 
-Procedure Fline;
+  procedure Fline;
 
-Var
-
-
+var   ang_fl_ir, apx, apy, apnx, apny: double;
+    nx, ny, dist, Ampx, Ampy, prod_int, raiz, x_reta, y_reta,  erroFLang,kfl1, kfl2,tfl: double;
 
 begin
- SetRCValue(4, 7 ,format('%s',['x1F=']));  SetRCValue(4, 8 ,format('%d',[x1f]));
- SetRCValue(5, 7 ,format('%s',['y1F=']));  SetRCValue(5, 8 ,format('%d',[y1f]));
- SetRCValue(6, 7 ,format('%s',['x2F=']));  SetRCValue(6, 8 ,format('%d',[x2f]));
- SetRCValue(7, 7 ,format('%s',['y2F=']));  SetRCValue(8, 8 ,format('%d',[y2f]));
+
+SetRCValue(19, 1 ,format('%s',['estadoFL=']));  SetRCValue(19, 2 ,format('%d',[estadoFL]));
+
+  SetRCValue(10, 6 ,format('%s',['Xi=']));
+  SetRCValue(11, 6 ,format('%s',['Yi=']));
+  SetRCValue(12, 6 ,format('%s',['xF=']));
+  SetRCValue(13, 6 ,format('%s',['yF=']));
+  SetRCValue(14, 6 ,format('%s',['tflrr=']));
+
+  xi := GetRCValue(10, 7 );
+  yi := GetRCValue(11, 7 );
+  xf := GetRCValue(12, 7 );
+  yf := GetRCValue(13, 7 );
+  tfl := GetRCValue(14, 7 )*pi/180;
 
 
- n1 := (x2f-x1f)/(sqrt(((x2f-x1f)*(x2f-x1f))+((y2f-y1f)*(y2f-y1f))));
- n2 := (y2f-y1f)/(sqrt(((x2f-x1f)*(x2f-x1f))+((y2f-y1f)*(y2f-y1f))));
+  (*nx:=xf-xi;
+  ny := yf-yi;
 
- A:= (x1f-x_act)*n1 + (y1f-y_act)*n2;
+  raiz:= SQRT( (xf-xi)*(xf-xi) + (yf-yi)*(yf-yi));
 
- xp := x_act + (x1f-x_act) - (A*n1);
- yp := y_act + (y1f-y_act) - (A*n2);
 
- edlinha := sqrt(Norm2(xp-x_act,yp-y_Act));
- edpfinal := sqrt(Norm2(x2-x_act,y2-y_act));
+  //calculo do versor n que segue a direçao da linha
+  nx:=nx/raiz;
+  ny:= ny/raiz;
 
- alinha1 := atan2(yp-y_act, xp-x_act);
- ealinha1 := normalizeangle(t_act-alinha1);
+  //representam o vector a-p
+  AmPx:= xi-x_act;
+  Ampy := yi-y_act;
 
- alinha2 := atan2(y2f-y_act, x2f-x_Act);
- ealinha2 := normalizeangle(t_Act-alinha2);
- 
+  distx:= AmPx;
+  disty:= AmPy;
 
+  // calculo auxiliar do produto interno do vector a-p com o versor n
+  prod_int := AmPx*nx + AmPy*ny;
+
+  //distancias em x e em y
+  distX := distX + prod_int*nx;
+  distY:= distY + prod_int*ny ;
+
+   SetRCValue(17, 8 ,format('%s',['distX=']));  SetRCValue(17, 9 ,format('%g',[distX]));
+        SetRCValue(18, 8 ,format('%s',['distY=']));  SetRCValue(18, 9 ,format('%g',[distY]));
+
+  //a distancia vai ser a norma do vector anterior
+
+  dist := SQRT(distX*distX + distY*distY);
+
+  //este será o ponto da recta mais proximo do robot se este seguir numa direcção perpendicular
+  x_reta := distX+x_act;
+  y_reta := distY+y_act;
+
+  SetRCValue(17, 10 ,format('%s',['x_reta=']));  SetRCValue(17, 11 ,format('%g',[x_reta]));
+        SetRCValue(18, 10 ,format('%s',['y_reta=']));  SetRCValue(18, 11 ,format('%g',[y_reta]));
+
+  SetRCValue(15, 6 ,format('%s',['dist=']));  SetRCValue(15, 7 ,format('%g',[dist]));
+
+
+           *)
+           
+
+
+  nx := xf-xi;
+  ny := yf-yi;
+  raiz :=  sqrt(nx*nx+ny*ny);
+  nx := nx / raiz;
+  ny := ny / raiz;
+  apx := xi-x_act;
+  apy := yi-y_act;                                                    //que raio é que está diferente aqui????
+  prod_int := apx*nx+apy*ny;
+  apnx := prod_int*nx;
+  apny := prod_int*ny;
+  dist := sqrt( ((apx-apnx)*(apx-apnx)) + ((apy-apny)*(apy-apny) ));
+  x_reta := (apx - apnx)+x_act;
+  y_reta := (apy - apny)+y_act;
+
+
+
+
+
+  //////////////////////////////////////////////////////////////////////***********************************************|\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+ case estadoFL OF
+    0:begin
+      if((abs(dist))>0.05)then begin
+        x_fl_ir:=x_reta;
+        y_fl_ir:=y_reta;
+        estadoFL:=1;
+        estadoGT:=0;
+      end
+      else begin
+        x_fl_ir:=xf;
+        y_fl_ir:=yf;
+        estadoFL:=2;
+      end
+	  end;
+     1:begin
+     (*RODA e VAI PARA A PERPENDICULAR*)
+
+
+	    ang_fl_ir:=atan2(yf-y_fl_ir,xf-x_fl_ir); // angulo que tem de estar quando chegar a reta
+
+      SetRCValue(17, 6 ,format('%s',['x_fl_ir=']));  SetRCValue(17, 7 ,format('%g',[x_fl_ir]));
+        SetRCValue(18, 6 ,format('%s',['y_fl_ir=']));  SetRCValue(18, 7 ,format('%g',[y_fl_ir]));
+          SetRCValue(19, 6 ,format('%s',['ang_fl_ir=']));  SetRCValue(19, 7 ,format('%g',[ang_fl_ir*180/pi]));
+
+      GoTo_xyt(x_fl_ir,y_fl_ir,ang_fl_ir);
+      if(dist<0.1)then
+      begin
+        estadoFL:=2; estadoGT:=0;
+      end;
+    end;
+    2:begin
+      erroflang:=  -normalizeangle(ang_fl_ir-t_act);
+      VelocidadeGoTo(4,kfl1*dist+Kfl2*erroflang);
+      if(dist<0.08)then
+      begin
+        estadoFL:=3; estadoGT:=0;
+      end;
+    end;
+    3:begin
+    (*SEGUE LINHA*)
+     GoTo_xyt(xf,yf,tfl);
+     if(abs(dist)>0.1)then begin estadoFL:=0;end;
+     if((abs(xf-x_act)<0.03) and (abs(yf-y_act)<0.03)and(abs(-normalizeangle(tfl-t_act))<0.07))then
+     begin estadoFL:=4;end;
+
+    end;
+    4:begin
+    (*PARADO*)
+	end;
+  end;
+
+
+       ////////////////////////////////////////////////////////////////****************************************|\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 
 end;
-
 
 
 procedure Control;
@@ -180,7 +289,7 @@ var ref: double;
 begin
 
   if keyPressed(ord('R')) then begin
-    SetRobotPos(irobot, 0, 0.4, 0, 0);
+    SetRobotPos(irobot, 0, 0, 0, 0);     //g           rrrgr
   end;
 
   if keyPressed(ord('S')) then begin
@@ -260,18 +369,15 @@ begin
 
   SetRCValue(10, 1 ,format('%s',['x_act=']));
   SetRCValue(10, 2 ,format('%.3g',[x_act]));
-  SetRCValue(10, 3 ,format('%s',['irobot_x']));
-  SetRCValue(10, 4 ,format('%.3g',[ GetRobotX(irobot)]));
+
 
   SetRCValue(11, 1 ,format('%s',['y_act=']));
   SetRCValue(11, 2 ,format('%.3g',[y_act]));
-  SetRCValue(11, 3 ,format('%s',['irobot_y']));
-  SetRCValue(11, 4 ,format('%.3g',[  GetRobotY(irobot)]));
+
 
   SetRCValue(12, 1 ,format('%s',['theta_act=']));
   SetRCValue(12, 2 ,format('%.3g',[t_act*180/pi]));
-  SetRCValue(12, 3 ,format('%s',['irobot_theta']));
-  SetRCValue(12, 4 ,format('%.3g',[ GetRobotTheta(irobot)*180/pi]));
+
 
   //VelocidadeManual();
     SetRCValue(4,4 ,format('%s',['xF']));
@@ -287,23 +393,25 @@ begin
     
 
 
-    xf:=GetRCValue(4,5);
-    yf:=GetRCValue(5,5);
-    tf:=GetRCValue(6,5)*pi/180;
+    xfGT:=GetRCValue(4,5);
+    yfGT:=GetRCValue(5,5);
+    tfGT:=GetRCValue(6,5)*pi/180;
     
 
   end;
 
-    SetRCValue(4,6 ,format('%g',[xF]));
-    SetRCValue(5, 6 ,format('%g',[yF]));
-    SetRCValue(6, 6 ,format('%g',[tf*180/pi]));
+    SetRCValue(4,6 ,format('%g',[xFGT]));
+    SetRCValue(5, 6 ,format('%g',[yFGT]));
+    SetRCValue(6, 6 ,format('%g',[tfGT*180/pi]));
     SetRCValue(7, 4 ,format('%s',['flag']));
     SetRCValue(7, 5 ,format('%d',[flag]));
 
 
    if(flag=1) then begin
-   GoTo_xyt(xf,yf,tf);
+   GoTo_xyt(xfGT,yfGT,tfGT);
    end;
+   
+   Fline;
 
 end;
 
@@ -323,7 +431,7 @@ begin
 
   estadoGT :=0;
   X_act :=  0;
-  Y_act  := 0.4;
+  Y_act  := 0;
   
   ControlMode := 'keys';
 end;
