@@ -7,7 +7,7 @@ var irobot, isensor: integer;
     UDP: TStream;
     ControlMode: string;
     encoder1, encoder2, xyz, kimp, dteta, tetaAnt, delta_d, delta_t, b, x_act, y_act, t_act, tfGT,xfGT,yfGT: double;
-    estadoGT, flag, estadoFL:integer;
+    estadoGT,estadoSQ, flag,flag1,flag2, estadoFL:integer;
     ang_ida, erro_ang_gt, erro_angf, x_fl_ir, y_fl_ir,distx, disty,x2fl,y2fl,x1fl,y1fl,tfl, xi, xf, yi, yf : double;
     
 procedure KeyControl(v: double);
@@ -135,26 +135,26 @@ begin
   SetRCValue(18, 3 ,format('%s',['erro_angf=']));  SetRCValue(18, 4 ,format('%f',[erro_angf]));
 end;
 
-  procedure Fline;
+  procedure Fline(xi,yi,xf,yf,tfl: double);
 
 var   ang_fl_ir, apx, apy, apnx, apny: double;
-    nx, ny, dist, Ampx, Ampy, prod_int, raiz, x_reta, y_reta,  erroFLang,kfl1, kfl2,tfl: double;
+    nx, ny, dist, Ampx, Ampy, prod_int, raiz, x_reta, y_reta,  erroFLang,kfl1, kfl2: double;
 
 begin
 
 SetRCValue(19, 1 ,format('%s',['estadoFL=']));  SetRCValue(19, 2 ,format('%d',[estadoFL]));
 
-  SetRCValue(10, 6 ,format('%s',['Xi=']));
-  SetRCValue(11, 6 ,format('%s',['Yi=']));
-  SetRCValue(12, 6 ,format('%s',['xF=']));
-  SetRCValue(13, 6 ,format('%s',['yF=']));
-  SetRCValue(14, 6 ,format('%s',['tflrr=']));
+  SetRCValue(10, 6 ,format('%s',['Xi= ',xi]));
+  SetRCValue(11, 6 ,format('%s',['Yi= ',yi]));
+  SetRCValue(12, 6 ,format('%s',['xF= ',xf]));
+  SetRCValue(13, 6 ,format('%s',['yF= ',yf]));
+  SetRCValue(14, 6 ,format('%s',['tfl= ', tfl]));
 
-  xi := GetRCValue(10, 7 );
+  (*xi := GetRCValue(10, 7 );
   yi := GetRCValue(11, 7 );
   xf := GetRCValue(12, 7 );
   yf := GetRCValue(13, 7 );
-  tfl := GetRCValue(14, 7 )*pi/180;
+  tfl := GetRCValue(14, 7 )*pi/180;    *)
 
 
   (*nx:=xf-xi;
@@ -194,27 +194,30 @@ SetRCValue(19, 1 ,format('%s',['estadoFL=']));  SetRCValue(19, 2 ,format('%d',[e
 
   SetRCValue(17, 10 ,format('%s',['x_reta=']));  SetRCValue(17, 11 ,format('%g',[x_reta]));
         SetRCValue(18, 10 ,format('%s',['y_reta=']));  SetRCValue(18, 11 ,format('%g',[y_reta]));
+              SetRCValue(15, 6 ,format('%s',['dist=']));  SetRCValue(15, 7 ,format('%g',[dist]));
+            *)
 
-  SetRCValue(15, 6 ,format('%s',['dist=']));  SetRCValue(15, 7 ,format('%g',[dist]));
 
 
-           *)
+
            
 
-
+   //que raio é que está diferente aqui????
   nx := xf-xi;
   ny := yf-yi;
   raiz :=  sqrt(nx*nx+ny*ny);
   nx := nx / raiz;
   ny := ny / raiz;
   apx := xi-x_act;
-  apy := yi-y_act;                                                    //que raio é que está diferente aqui????
+  apy := yi-y_act;
   prod_int := apx*nx+apy*ny;
   apnx := prod_int*nx;
   apny := prod_int*ny;
   dist := sqrt( ((apx-apnx)*(apx-apnx)) + ((apy-apny)*(apy-apny) ));
   x_reta := (apx - apnx)+x_act;
   y_reta := (apy - apny)+y_act;
+  
+    SetRCValue(15, 6 ,format('%s',['dist=']));  SetRCValue(15, 7 ,format('%g',[dist]));
 
 
 
@@ -278,6 +281,72 @@ SetRCValue(19, 1 ,format('%s',['estadoFL=']));  SetRCValue(19, 2 ,format('%d',[e
 
 
 end;
+
+
+
+
+
+//Aula Laboratorial #5
+
+(*-------- DANÇA DO QUADRADO ---------*)
+procedure fSquare;
+var  gg:double;sens1,sens2:double;
+    parede0x,parede1y,parede2x,parede3y:double;
+    xxx:double;
+begin
+  parede0x:=0.15-0.025;
+  parede1y:=-1.15+0.025;
+  parede2x:=-1.15+0.025;
+  parede3y:=0.15-0.025;
+  sens1:=GetSensorVal(0,0);
+  sens2:=GetSensorVal(0,1);
+  case estadoSQ OF
+    0:begin
+
+      FLine(0,0,0,1,0);
+      
+
+      if((abs(0-x_act)<0.04) and (abs(1-y_act)<0.04))then
+      begin estadoSQ:=1;estadoFL:=0; end;
+         end;
+
+    1:begin
+
+
+      FLine(0,1,1,1,-90);
+      
+      if((abs(1-x_act)<0.04) and (abs(1-y_act)<0.04))then
+      begin estadoSQ:=2;estadoFL:=0; end;
+
+       end;
+    2:begin
+
+
+
+      FLine(1,1,1,0,-180);
+      
+       if((abs(1-x_act)<0.04) and (abs(0-y_act)<0.04))then
+      begin estadoSQ:=3;estadoFL:=0; end;
+
+
+    end;
+    3:begin
+
+
+      FLine(1,0,0,0,90);
+      
+       if((abs(0-x_act)<0.04) and (abs(0-y_act)<0.04))then
+      begin estadoSQ:=0;estadoFL:=0; end;
+
+    end;
+  end;
+  (*
+  SetRCValue(30, 1 ,format('%s',['estadoDDQ=']));SetRCValue(30, 2 ,format('%d',[estadoDDQ]));
+  SetRCValue(31, 1 ,format('%s',['voltasDDQ=']));SetRCValue(31, 2 ,format('%d',[voltasDDQ]));
+  SetRCValue(30, 3 ,format('%s',['xxx']));SetRCValue(30,4 ,format('%f',[xxx*180/pi]));      *)
+end;
+(*-------- DANÇA DO QUADRADO ---------*)
+
 
 
 procedure Control;
@@ -410,8 +479,35 @@ begin
    if(flag=1) then begin
    GoTo_xyt(xfGT,yfGT,tfGT);
    end;
+
+  if( keyPressed(ord('F')) =true)then begin
+   flag1:=1;
+  xi := GetRCValue(10, 7 );
+  yi := GetRCValue(11, 7 );
+  xf := GetRCValue(12, 7 );
+  yf := GetRCValue(13, 7 );
+  tfl := GetRCValue(14, 7 )*pi/180;
    
-   Fline;
+   end;
+   
+    if(flag1=1) then begin
+    //executar os followline pela seguinte ordem para fazer um quadrado
+    fline(xi,yi,xf,yf,tfl);
+
+    end;
+    
+
+      if( keyPressed(ord('Q')) =true)then begin
+   flag2:=1; end;
+   
+   if(flag2=1) then begin
+
+    fSquare;
+
+    end;
+   
+   
+   
 
 end;
 
