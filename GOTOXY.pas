@@ -286,32 +286,51 @@ end;
 
 
 
-//Aula Laboratorial #5
-
-(*-------- DANÇA DO QUADRADO ---------*)
+//////////////////////////QUADRADO\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 procedure fSquare;
 var  gg:double;sens1,sens2:double;
-    parede0x,parede1y,parede2x,parede3y:double;
-    xxx:double;
+    parede0x,parede1y,parede2x,parede3y, ang_new:double;
+    y_act_new:double;
 begin
-  parede0x:=0.15-0.025;
-  parede1y:=-1.15+0.025;
-  parede2x:=-1.15+0.025;
-  parede3y:=0.15-0.025;
+
   sens1:=GetSensorVal(0,0);
   sens2:=GetSensorVal(0,1);
   case estadoSQ OF
     0:begin
+       if (( sens1 > -1 ) and (sens2 > -1)) then begin
+          ang_new:= -normalizeangle(atan2(sens1-sens2,0.1));
+           SetRCValue(13, 1 ,format('%s',['ang_new=']));SetRCValue(13,2  ,format('%g',[ang_new*pi/180]));
 
+          t_act := ang_new;
+          
+             //0.20 parece ser a distancia da parede  a y=1
+           y_act:= (0.20-((sens1+sens2)/2)*cos(ang_new)) + 1;
+      end;
+
+      //ele vai do (0,0) para o (0,1) e este movimento inclui a rotação para a próxima linha
       FLine(0,0,0,1,0);
       
 
       if((abs(0-x_act)<0.04) and (abs(1-y_act)<0.04))then
-      begin estadoSQ:=1;estadoFL:=0; end;
+          begin
+
+          estadoSQ:=1;estadoFL:=0; end;
          end;
+         
+
 
     1:begin
 
+     if (( sens1 > -1 ) and (sens2 > -1)) then begin
+          ang_new:= -normalizeangle(atan2(sens1-sens2,0.1));
+           SetRCValue(13, 1 ,format('%s',['ang_new=']));SetRCValue(13,2  ,format('%g',[ang_new*pi/180]));
+
+          t_act := ang_new;
+            //0.20 parece ser a distancia da parede  a y=1
+           y_act:= (0.20-((sens1+sens2)/2)*cos(ang_new)) + 1;
+           
+
+      end;
 
       FLine(0,1,1,1,-90);
       
@@ -320,7 +339,15 @@ begin
 
        end;
     2:begin
+             if (( sens1 > -1 ) and (sens2 > -1)) then begin
+          ang_new:= -normalizeangle(atan2(sens1-sens2,0.1));
+           SetRCValue(13, 1 ,format('%s',['ang_new=']));SetRCValue(13,2  ,format('%g',[ang_new*pi/180]));
 
+        t_act := ang_new - (pi/2);
+        
+       x_act:= (0.20-((sens1+sens2)/2)) * cos( ang_new - (pi/2) ) + 1;
+         
+      end;
 
 
       FLine(1,1,1,0,-180);
@@ -331,7 +358,14 @@ begin
 
     end;
     3:begin
+            if (( sens1 > -1 ) and (sens2 > -1)) then begin
+          ang_new:= -normalizeangle(atan2(sens1-sens2,0.1));
+           SetRCValue(13, 1 ,format('%s',['ang_new=']));SetRCValue(13,2  ,format('%g',[ang_new*pi/180]));
 
+          t_act := ang_new - (pi/2);
+          
+           x_act:= (0.20-((sens1+sens2)/2)) * cos( ang_new - (pi/2) ) + 1;
+      end;
 
       FLine(1,0,0,0,90);
       
@@ -344,8 +378,14 @@ begin
   SetRCValue(30, 1 ,format('%s',['estadoDDQ=']));SetRCValue(30, 2 ,format('%d',[estadoDDQ]));
   SetRCValue(31, 1 ,format('%s',['voltasDDQ=']));SetRCValue(31, 2 ,format('%d',[voltasDDQ]));
   SetRCValue(30, 3 ,format('%s',['xxx']));SetRCValue(30,4 ,format('%f',[xxx*180/pi]));      *)
+
+  SetRCValue(5, 8 ,format('%s',['sensor1=']));SetRCValue(5,9  ,format('%g',[sens1]));
+  SetRCValue(6, 8 ,format('%s',['sensor2=']));SetRCValue(6,9  ,format('%g',[sens2]));
+
 end;
-(*-------- DANÇA DO QUADRADO ---------*)
+
+
+//////////////////////////////////QUADRADO\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 
 
