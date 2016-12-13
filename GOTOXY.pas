@@ -9,7 +9,7 @@ var irobot, isensor: integer;
     encoder1, encoder2, xyz, kimp, dteta, tetaAnt, delta_d, delta_t, b, x_act, y_act, t_act, tfGT,xfGT,yfGT: double;
     estadoGT,estadoSQ, flag,flag1,flag2, estadoFL:integer;
     ang_ida, erro_ang_gt, erro_angf, x_fl_ir, y_fl_ir,distx, disty,x2fl,y2fl,x1fl,y1fl,tfl, xi, xf, yi, yf : double;
-    
+
 procedure KeyControl(v: double);
 var v1, v2: double;
 begin
@@ -56,7 +56,7 @@ begin
   end else begin
     err := -P.x;
   end;
-  
+
   v1 := v - k * err;
   v2 := v + k * err;
 
@@ -105,26 +105,25 @@ begin
   erro_angf:=-normalizeangle(tff-t_act);
 
   case estadoGT Of
-    0:begin
-    (*RODA PARA IR*)
-      //if(abs(erro_ang_gt)>0.05)then begin k1:=50;end;
+    0:begin   //Rotação
+
       VelocidadeGoTo(0,k1*erro_ang_gt);
       if(abs(erro_ang_gt)<0.03)then begin estadoGT:=1;end;
     end;
-     1:begin
-     (*VAI PARA o PONTO*)
+     1:begin //GOTO
+
       if(abs(erro_ang_gt)>0.05)then begin estadoGT:=0;end;
       VelocidadeGoTo(10,k2*erro_ang_gt);
       if((abs(xff-x_act)<0.02) and (abs(yff-y_act)<0.02))then begin estadoGT:=2;end;
     end;
-    2:begin
-    (*RODA PARA O ANG FINAL*)
+    2:begin //Rotação FInal
+
         VelocidadeGoTo(0,k3*erro_angf);
         if( abs(erro_angf)<0.05 )then
         begin estadoGT:=3; flag:=0; end;
     end;
     3:begin
-    (*PARADO*)
+
     end;
   end;
 
@@ -200,7 +199,7 @@ SetRCValue(19, 1 ,format('%s',['estadoFL=']));  SetRCValue(19, 2 ,format('%d',[e
 
 
 
-           
+
 
    //que raio é que está diferente aqui????
   nx := xf-xi;
@@ -216,7 +215,7 @@ SetRCValue(19, 1 ,format('%s',['estadoFL=']));  SetRCValue(19, 2 ,format('%d',[e
   dist := sqrt( ((apx-apnx)*(apx-apnx)) + ((apy-apny)*(apy-apny) ));
   x_reta := (apx - apnx)+x_act;
   y_reta := (apy - apny)+y_act;
-  
+
     SetRCValue(15, 6 ,format('%s',['dist=']));  SetRCValue(15, 7 ,format('%g',[dist]));
 
 
@@ -239,8 +238,7 @@ SetRCValue(19, 1 ,format('%s',['estadoFL=']));  SetRCValue(19, 2 ,format('%d',[e
         estadoFL:=2;
       end
 	  end;
-     1:begin
-     (*RODA e VAI PARA A PERPENDICULAR*)
+     1:begin    //Rotação para a linha
 
 
 	    ang_fl_ir:=atan2(yf-y_fl_ir,xf-x_fl_ir); // angulo que tem de estar quando chegar a reta
@@ -263,8 +261,8 @@ SetRCValue(19, 1 ,format('%s',['estadoFL=']));  SetRCValue(19, 2 ,format('%d',[e
         estadoFL:=3; estadoGT:=0;
       end;
     end;
-    3:begin
-    (*SEGUE LINHA*)
+    3:begin    //Seguir a Linha
+
      GoTo_xyt(xf,yf,tfl);
      if(abs(dist)>0.1)then begin estadoFL:=0;end;
      if((abs(xf-x_act)<0.03) and (abs(yf-y_act)<0.03)and(abs(-normalizeangle(tfl-t_act))<0.07))then
@@ -272,7 +270,7 @@ SetRCValue(19, 1 ,format('%s',['estadoFL=']));  SetRCValue(19, 2 ,format('%d',[e
 
     end;
     4:begin
-    (*PARADO*)
+
 	end;
   end;
 
@@ -302,21 +300,21 @@ begin
            SetRCValue(13, 1 ,format('%s',['ang_new=']));SetRCValue(13,2  ,format('%g',[ang_new*pi/180]));
 
           t_act := ang_new;
-          
+
              //0.20 parece ser a distancia da parede  a y=1
            y_act:= (0.20-((sens1+sens2)/2)*cos(ang_new)) + 1;
       end;
 
       //ele vai do (0,0) para o (0,1) e este movimento inclui a rotação para a próxima linha
       FLine(0,0,0,1,0);
-      
+
 
       if((abs(0-x_act)<0.04) and (abs(1-y_act)<0.04))then
           begin
 
           estadoSQ:=1;estadoFL:=0; end;
          end;
-         
+
 
 
     1:begin
@@ -328,12 +326,12 @@ begin
           t_act := ang_new;
             //0.20 parece ser a distancia da parede  a y=1
            y_act:= (0.20-((sens1+sens2)/2)*cos(ang_new)) + 1;
-           
+
 
       end;
 
       FLine(0,1,1,1,-90);
-      
+
       if((abs(1-x_act)<0.04) and (abs(1-y_act)<0.04))then
       begin estadoSQ:=2;estadoFL:=0; end;
 
@@ -344,14 +342,14 @@ begin
            SetRCValue(13, 1 ,format('%s',['ang_new=']));SetRCValue(13,2  ,format('%g',[ang_new*pi/180]));
 
         t_act := ang_new - (pi/2);
-        
+
        x_act:= (0.20-((sens1+sens2)/2)) * cos( ang_new - (pi/2) ) + 1;
-         
+
       end;
 
 
       FLine(1,1,1,0,-180);
-      
+
        if((abs(1-x_act)<0.04) and (abs(0-y_act)<0.04))then
       begin estadoSQ:=3;estadoFL:=0; end;
 
@@ -363,21 +361,19 @@ begin
            SetRCValue(13, 1 ,format('%s',['ang_new=']));SetRCValue(13,2  ,format('%g',[ang_new*pi/180]));
 
           t_act := ang_new - (pi/2);
-          
+
            x_act:= (0.20-((sens1+sens2)/2)) * cos( ang_new - (pi/2) ) + 1;
       end;
 
       FLine(1,0,0,0,90);
-      
+
        if((abs(0-x_act)<0.04) and (abs(0-y_act)<0.04))then
       begin estadoSQ:=0;estadoFL:=0; end;
 
     end;
   end;
-  (*
-  SetRCValue(30, 1 ,format('%s',['estadoDDQ=']));SetRCValue(30, 2 ,format('%d',[estadoDDQ]));
-  SetRCValue(31, 1 ,format('%s',['voltasDDQ=']));SetRCValue(31, 2 ,format('%d',[voltasDDQ]));
-  SetRCValue(30, 3 ,format('%s',['xxx']));SetRCValue(30,4 ,format('%f',[xxx*180/pi]));      *)
+
+
 
   SetRCValue(5, 8 ,format('%s',['sensor1=']));SetRCValue(5,9  ,format('%g',[sens1]));
   SetRCValue(6, 8 ,format('%s',['sensor2=']));SetRCValue(6,9  ,format('%g',[sens2]));
@@ -412,24 +408,24 @@ begin
   if ControlMode = 'keys' then begin
     KeyControl(10);
   end;
-  
+
   t := t + 0.04;
   if w*t >= 2*pi then begin
     t := t - 2*pi/w;
   end;
-  
+
   if controlMode = 'track' then begin
     TrackControl(10, 150);
   end;
-  
+
   sens1:=GetSensorVal(0,0);
   sens2:=GetSensorVal(0,1);
 
-  
+
   //GetAxisOdo(RobotIndex, AxisIndex);
   odo1:=GetAxisOdo(0,0);
   odo2:=GetAxisOdo(0,1);
-  
+
   SetRCValue(1, 1 ,format('%.3g',[sens1]));
   SetRCValue(2, 1 ,format('%.3g',[sens2]));
 
@@ -499,13 +495,13 @@ begin
    flag:=1;
    estadoGT:=0;
     //OBTER xf e yf e tf
-    
+
 
 
     xfGT:=GetRCValue(4,5);
     yfGT:=GetRCValue(5,5);
     tfGT:=GetRCValue(6,5)*pi/180;
-    
+
 
   end;
 
@@ -527,27 +523,27 @@ begin
   xf := GetRCValue(12, 7 );
   yf := GetRCValue(13, 7 );
   tfl := GetRCValue(14, 7 )*pi/180;
-   
+
    end;
-   
+
     if(flag1=1) then begin
     //executar os followline pela seguinte ordem para fazer um quadrado
     fline(xi,yi,xf,yf,tfl);
 
     end;
-    
+
 
       if( keyPressed(ord('Q')) =true)then begin
    flag2:=1; end;
-   
+
    if(flag2=1) then begin
 
     fSquare;
 
     end;
-   
-   
-   
+
+
+
 
 end;
 
@@ -557,10 +553,10 @@ procedure Initialize;
 begin
   irobot := 0;
   isensor := GetSolidIndex(irobot, 'NXTLightSensor');
-  
+
   t := 0;
   w := 1;
-  
+
   kimp:= 0.0005;
   b:=0.1;
   t_act:=-pi/2 ;
@@ -568,6 +564,6 @@ begin
   estadoGT :=0;
   X_act :=  0;
   Y_act  := 0;
-  
+
   ControlMode := 'keys';
 end;
